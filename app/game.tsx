@@ -260,12 +260,15 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
       const dot = dx * first.nx + dy * first.ny;
       const reflectedX = dx - 2 * dot * first.nx, reflectedY = dy - 2 * dot * first.ny;
       const second = firstAimHit(g, bx + reflectedX * .1, by + reflectedY * .1, reflectedX, reflectedY);
-      const bounceLength = Math.min(115, second.distance - 3);
-      if (bounceLength > 0) {
+      const bounceLength = second.distance + .1;
+      if (Number.isFinite(bounceLength) && bounceLength > 0) {
         ctx.strokeStyle = '#a9a2c0'; ctx.lineWidth = 1.5; ctx.globalAlpha = .8;
         ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
-        drawAimDots(ctx, bx, by, reflectedX, reflectedY, bounceLength, 12,
-          '#a9a2c0', .68, .18, 2.35);
+        drawAimDots(ctx, bx, by, reflectedX, reflectedY, Math.max(0, bounceLength - 4), 12,
+          '#a9a2c0', .68, .34, 2.35);
+        ctx.fillStyle = '#a9a2c0'; ctx.globalAlpha = .65;
+        ctx.beginPath(); ctx.arc(bx + reflectedX * bounceLength, by + reflectedY * bounceLength,
+          2.35, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       }
     }
   }
