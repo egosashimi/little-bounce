@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+  --ink: #574753;
+  --muted: #9a8189;
+  --paper: #fff8ee;
+  --accent: #d49ba6;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { font-family: ui-rounded, 'Avenir Next', 'Trebuchet MS', sans-serif; color: var(--ink); background: #ead8c9; }
+button { cursor: pointer; }
+.game-screen {
+  width: 100vw; min-height: 100dvh; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 14%, #fff8ee 0, #f3e4d5 62%, #e6d0c2 100%);
+}
+.game-shell {
+  position: relative; width: min(100vw, 480px); height: 100dvh; max-height: 980px;
+  overflow: hidden; background: var(--paper); box-shadow: 0 20px 80px #715c4b33;
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+.score-hud {
+  height: clamp(100px, 15dvh, 142px); flex: none; display: flex; align-items: center;
+  flex-direction: column; justify-content: center; position: relative;
+}
+.hud-label { font-size: 10px; letter-spacing: .25em; color: #b59391; font-weight: 900; }
+.round-score { font-size: clamp(58px, 9.3dvh, 84px); line-height: .95; font-weight: 900; letter-spacing: -.07em; color: #6d5b64; }
+.best-score { position: absolute; top: 24px; right: 24px; font-size: 11px; font-weight: 900; letter-spacing: .07em; color: #a68e92; }
+.undo-button { position: absolute; right: 18px; bottom: 15px; height: 30px; padding: 0 8px; border-radius: 10px; color: #947982; font-weight: 850; font-size: 12px; }
+.undo-button svg { width: 15px; height: 15px; }
+.undo-button:disabled { opacity: .33; cursor: default; }
+.hud-icon { position: absolute; top: 17px; left: 18px; color: #9c7f87; border-radius: 50%; width: 44px; height: 44px; }
+.hud-icon svg { width: 19px; height: 19px; stroke-width: 2.3; }
+.hud-icon:hover { background: #f2e6de; }
+.hud-icon:focus-visible, .speed-button:focus-visible, .overlay-card button:focus-visible, .help-card button:focus-visible { outline: 3px solid #bd8491; outline-offset: 3px; }
+.game-board {
+  position: relative; flex: 1; min-height: 0; margin: 0 14px;
+  border-radius: 26px; overflow: hidden; background: #fffdf7;
+  border: 2px solid #eadbd4; box-shadow: inset 0 5px 18px #f1e5dd;
+}
+.play-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.speed-button {
+  position: absolute; right: 12px; bottom: 50px; z-index: 2; border-radius: 99px;
+  color: #725c65; background: #fff7edeb; border: 1px solid #ead8d4;
+  box-shadow: 0 3px 12px #a1827e29; font-weight: 800; padding: 0 12px; height: 34px;
+}
+.speed-button svg { width: 16px; height: 16px; }
+.game-bottom {
+  height: clamp(84px, 11dvh, 112px); flex: none; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.game-bottom h1 { margin: 0; font-size: clamp(22px, 5vw, 27px); font-weight: 900; letter-spacing: -.065em; line-height: 1; }
+.title-star { display: inline-block; margin-left: 5px; font-size: .58em; color: #dba2a6; vertical-align: top; transform: rotate(15deg); }
+.game-bottom p { margin: 7px 0 0; font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: .01em; }
+.game-overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: #fff8efbd; backdrop-filter: blur(8px); padding: 20px; }
+.overlay-card {
+  width: min(100%, 340px); padding: 26px 22px 20px; text-align: center;
+  background: #fffaf4; border: 2px solid #ead8d1; border-radius: 26px;
+  box-shadow: 0 12px 32px #8a6e6729, inset 0 3px 0 #fff;
+}
+.overlay-ornament { font-size: 24px; color: #d9adab; }
+.overlay-card h2, .help-card h2 { margin: 8px 0 7px; font-size: 25px; letter-spacing: -.055em; line-height: 1.1; font-weight: 900; }
+.overlay-card p { margin: 0 auto 22px; max-width: 255px; color: #947d84; font-size: 13px; line-height: 1.5; font-weight: 650; }
+.overlay-actions { display: grid; gap: 9px; }
+.primary-action, .secondary-action { width: 100%; min-height: 43px; border-radius: 14px; font-size: 14px; font-weight: 850; }
+.primary-action { color: #fffaf4; background: #b9818f; box-shadow: inset 0 -3px 0 #935f6b; }
+.primary-action:hover { background: #aa7080; }
+.secondary-action { background: #fffaf4; color: #876e78; border-color: #dbc3c1; }
+.menu-tools { display: flex; gap: 6px; justify-content: center; margin-top: 14px; border-top: 1px solid #eedfd8; padding-top: 10px; }
+.menu-tools button { color: #8e7780; font-size: 11px; font-weight: 750; }
+.menu-tools svg { width: 14px; height: 14px; }
+.help-scrim { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: #67545f80; backdrop-filter: blur(7px); }
+.help-card { position: relative; width: min(100%, 360px); max-height: calc(100% - 24px); overflow: auto; padding: 27px 23px 22px;
+  border-radius: 26px; background: #fffaf3; border: 2px solid #eadbd4; box-shadow: 0 20px 50px #4f3d4736; }
+.close-help { position: absolute; right: 12px; top: 12px; color: #957a82; }
+.help-symbol { color: #dba2a6; font-size: 28px; }
+.help-card h2 { margin-top: 8px; }
+.help-card p { color: #786973; font-size: 13px; line-height: 1.55; margin: 12px 0; }
+.install-tip { display: grid; gap: 5px; background: #f4e8df; border-radius: 15px; padding: 13px 14px; margin: 16px 0; color: #6f5964; }
+.install-tip strong { font-size: 13px; }.install-tip span { font-size: 12px; line-height: 1.45; }.install-action { justify-self: start; margin-top: 6px; }
+@media (max-width: 480px) { .game-shell { box-shadow: none; } .game-board { margin-inline: 10px; } }
+@media (max-height: 670px) { .score-hud { height: 93px; } .game-bottom { height: 72px; } .round-score { font-size: 55px; } .best-score { top: 18px; } .hud-icon { top: 12px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
