@@ -1,11 +1,13 @@
-const CACHE = 'little-bounce-v1';
-const CORE = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+const CACHE = 'little-bounce-v2';
+const ROOT = new URL(self.registration.scope).pathname;
+const asset = (name) => new URL(name, self.registration.scope).toString();
+const CORE = [ROOT, asset('manifest.webmanifest'), asset('icon-192.png'), asset('icon-512.png'), asset('apple-touch-icon.png')];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll(CORE);
-    const html = await (await cache.match('/')).text();
+    const html = await (await cache.match(ROOT)).text();
     const assets = [...html.matchAll(/(?:src|href)="(\/[^"]+)"/g)]
       .map((match) => match[1])
       .filter((url) => !url.startsWith('//') && !url.includes('/__'));
@@ -27,9 +29,9 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).then(async (response) => {
-      if (response.ok) (await caches.open(CACHE)).put('/', response.clone());
+      if (response.ok) (await caches.open(CACHE)).put(ROOT, response.clone());
       return response;
-    }).catch(() => caches.match('/')));
+    }).catch(() => caches.match(ROOT)));
     return;
   }
   event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then(async (response) => {

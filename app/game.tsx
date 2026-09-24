@@ -288,7 +288,10 @@ export default function GameScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if ('serviceWorker' in navigator && location.protocol === 'https:') void navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      const base = import.meta.env.BASE_URL || '/';
+      void navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch(() => {});
+    }
     const handler = (event: Event) => { event.preventDefault(); setInstallPrompt(event as Event & { prompt: () => Promise<void> }); };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
