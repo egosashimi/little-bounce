@@ -82,11 +82,16 @@ function launchOne(g: Game) {
   g.balls.push({ x: g.launchX, y: floor(g) - R - 1, vx: g.dx * SPEED, vy: g.dy * SPEED,
     lastHit: -1, hitWait: 0, trail: [] }); g.launched++;
 }
+function aimDirection(g: Game, targetX = g.aimX, targetY = g.aimY): { x: number; y: number } {
+  const x = targetX - g.launchX, y = Math.min(-65, targetY - floor(g));
+  const length = Math.hypot(x, y) || 1;
+  const dx = Math.max(-.94, Math.min(.94, x / length));
+  return { x: dx, y: -Math.sqrt(1 - dx * dx) };
+}
 function fire(g: Game) {
   if (g.phase !== 'ready' || g.paused) return;
-  const x = g.aimX - g.launchX, y = Math.min(-65, g.aimY - floor(g));
-  const d = Math.hypot(x, y) || 1;
-  g.dx = Math.max(-.94, Math.min(.94, x / d)); g.dy = -Math.sqrt(1 - g.dx * g.dx);
+  const direction = aimDirection(g);
+  g.dx = direction.x; g.dy = direction.y;
   g.phase = 'firing'; g.intro = false; g.aiming = false; g.fast = false;
   g.launched = 0; g.shotCount = g.count; g.clock = 0; g.nextX = null; launchOne(g);
 }
@@ -162,6 +167,59 @@ function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number
   ctx.fillStyle = '#fffaf4'; ctx.beginPath(); ctx.arc(x, y - 1, r - .4, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#5a4d58'; ctx.beginPath(); ctx.arc(x - 2, y - 1, .8, 0, Math.PI * 2); ctx.arc(x + 2, y - 1, .8, 0, Math.PI * 2); ctx.fill();
 }
+type AimHit = { distance: number; nx: number; ny: number; catchesBall: boolean };
+function firstAimHit(g: Game, x: number, y: number, dx: number, dy: number): AimHit {
+  let hit: AimHit = { distance: Infinity, nx: 0, ny: 0, catchesBall: false };
+  const consider = (distance: number, nx: number, ny: number, catchesBall = false) => {
+    if (distance > .01 && distance < hit.distance) hit = { distance, nx, ny, catchesBall };
+  };
+  if (dx < 0) consider((R - x) / dx, 1, 0);
+  if (dx > 0) consider((W - R - x) / dx, -1, 0);
+  if (dy < 0) consider((R - y) / dy, 0, 1);
+  if (dy > 0) consider((floor(g) - R - y) / dy, 0, -1, true);
+  for (const brick of g.bricks) {
+    if (brick.hp <= 0) continue;
+    const b = rect(brick);
+    if (dx > 0) {
+      const t = (b.x - R - x) / dx, hitY = y + dy * t;
+      if (hitY >= b.y && hitY <= b.y + b.h) consider(t, -1, 0);
+    }
+    if (dx < 0) {
+      const t = (b.x + b.w + R - x) / dx, hitY = y + dy * t;
+      if (hitY >= b.y && hitY <= b.y + b.h) consider(t, 1, 0);
+    }
+    if (dy > 0) {
+      const t = (b.y - R - y) / dy, hitX = x + dx * t;
+      if (hitX >= b.x && hitX <= b.x + b.w) consider(t, 0, -1);
+    }
+    if (dy < 0) {
+      const t = (b.y + b.h + R - y) / dy, hitX = x + dx * t;
+      if (hitX >= b.x && hitX <= b.x + b.w) consider(t, 0, 1);
+    }
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      const cx = sx < 0 ? b.x : b.x + b.w;
+      const cy = sy < 0 ? b.y : b.y + b.h;
+      const ox = x - cx, oy = y - cy;
+      const projection = ox * dx + oy * dy;
+      const discriminant = projection * projection - (ox * ox + oy * oy - R * R);
+      if (discriminant < 0) continue;
+      const t = -projection - Math.sqrt(discriminant);
+      const hx = x + dx * t, hy = y + dy * t;
+      if ((hx - cx) * sx >= 0 && (hy - cy) * sy >= 0) consider(t, (hx - cx) / R, (hy - cy) / R);
+    }
+  }
+  return hit;
+}
+function drawAimDots(ctx: CanvasRenderingContext2D, x: number, y: number, dx: number, dy: number,
+  length: number, spacing: number, color: string, startAlpha: number, endAlpha: number, radius: number) {
+  const count = Math.floor(length / spacing);
+  ctx.fillStyle = color;
+  for (let i = 1; i <= count; i++) {
+    ctx.globalAlpha = startAlpha + (endAlpha - startAlpha) * (i / Math.max(1, count));
+    ctx.beginPath(); ctx.arc(x + dx * i * spacing, y + dy * i * spacing, radius, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
 function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
   ctx.clearRect(0, 0, W, g.h);
   ctx.fillStyle = '#f3e8e0';
@@ -192,17 +250,24 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
   ctx.strokeStyle = '#e9d9d0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(17, floor(g) + 1); ctx.lineTo(W - 17, floor(g) + 1); ctx.stroke();
   if (g.phase === 'ready' && !g.paused) {
     const ox = g.launchX, oy = floor(g) - R - 1;
-    const tx = g.aiming ? g.aimX : ox + 70, ty = g.aiming ? g.aimY : oy - 240;
-    const dx = tx - ox, dy = Math.min(-65, ty - floor(g)), d = Math.hypot(dx, dy) || 1;
-    let vx = Math.max(-.94, Math.min(.94, dx / d)), vy = -Math.sqrt(1 - vx * vx), x = ox, y = oy;
-    ctx.fillStyle = '#c6aeb2';
-    for (let i = 0; i < 16; i++) {
-      x += vx * 15; y += vy * 15;
-      if (x < 8 || x > W - 8) { x = Math.max(8, Math.min(W - 8, x)); vx *= -1; }
-      if (y < 8) break;
-      ctx.globalAlpha = .75 - i * .032; ctx.beginPath(); ctx.arc(x, y, 3 - i * .06, 0, Math.PI * 2); ctx.fill();
+    const { x: dx, y: dy } = g.aiming ? aimDirection(g) : aimDirection(g, ox + 70, oy - 240);
+    const first = firstAimHit(g, ox, oy, dx, dy);
+    const primaryLength = Math.min(first.distance, g.h + W);
+    drawAimDots(ctx, ox, oy, dx, dy, Math.max(0, primaryLength - 4), 13,
+      '#bc9faa', .82, .52, 2.8);
+    if (Number.isFinite(first.distance) && !first.catchesBall) {
+      const bx = ox + dx * first.distance, by = oy + dy * first.distance;
+      const dot = dx * first.nx + dy * first.ny;
+      const reflectedX = dx - 2 * dot * first.nx, reflectedY = dy - 2 * dot * first.ny;
+      const second = firstAimHit(g, bx + reflectedX * .1, by + reflectedY * .1, reflectedX, reflectedY);
+      const bounceLength = Math.min(115, second.distance - 3);
+      if (bounceLength > 0) {
+        ctx.strokeStyle = '#a9a2c0'; ctx.lineWidth = 1.5; ctx.globalAlpha = .8;
+        ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+        drawAimDots(ctx, bx, by, reflectedX, reflectedY, bounceLength, 12,
+          '#a9a2c0', .68, .18, 2.35);
+      }
     }
-    ctx.globalAlpha = 1;
   }
   for (const ball of g.balls) {
     ball.trail.forEach((p, i) => { ctx.fillStyle = `rgba(214,171,173,${.08 + i * .06})`;
