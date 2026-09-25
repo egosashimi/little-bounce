@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Little Bounce",
-  "short_name": "Bounce",
-  "description": "A cozy pocket game of bouncing balls and numbered blocks.",
+  "name": "Little Head",
+  "short_name": "Little Head",
+  "description": "A cozy cat ricochet game for your pocket.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,4 +1,4 @@
-const CACHE = 'little-bounce-v2';
+const CACHE = 'little-head-v1';
 const ROOT = new URL(self.registration.scope).pathname;
 const asset = (name) => new URL(name, self.registration.scope).toString();
 const CORE = [ROOT, asset('manifest.webmanifest'), asset('icon-192.png'), asset('icon-512.png'), asset('apple-touch-icon.png')];

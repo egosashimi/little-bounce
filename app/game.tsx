@@ -28,9 +28,9 @@ const center = (p: Pickup) => ({ x: p.col * CELL + 30, y: 43 + p.row * CELL });
 
 function initial(h: number, best: number): Game {
   return { h, best, round: 1, count: 1, launchX: W / 2, id: 5,
-    bricks: [{ id: 1, col: 1, row: 0, hp: 1, color: 0, pulse: 0 },
-      { id: 2, col: 3, row: 0, hp: 2, color: 1, pulse: 0 },
-      { id: 3, col: 5, row: 0, hp: 1, color: 2, pulse: 0 }],
+    bricks: [{ id: 1, col: 1, row: 1, hp: 1, color: 0, pulse: 0 },
+      { id: 2, col: 3, row: 1, hp: 2, color: 1, pulse: 0 },
+      { id: 3, col: 5, row: 1, hp: 1, color: 2, pulse: 0 }],
     pickups: [{ id: 4, col: 4, row: 1 }], balls: [], particles: [],
     phase: 'ready', paused: false, aiming: false, aimX: W / 2 + 70, aimY: h / 2,
     intro: true, launched: 0, shotCount: 1, clock: 0, dx: 0, dy: -1, nextX: null, fast: false };
@@ -43,11 +43,13 @@ function load(h: number): Game {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (saved && Number.isInteger(saved.round) && saved.round > 0 && Number.isInteger(saved.count) && saved.count > 0 &&
       Array.isArray(saved.bricks) && Array.isArray(saved.pickups)) {
+      // Older saves used row zero. Preserve their layout while opening the ceiling lane.
+      const shift = saved.bricks.some((b: Brick) => b.row === 0) || saved.pickups.some((p: Pickup) => p.row === 0) ? 1 : 0;
       return { ...start, round: saved.round, count: Math.min(999, saved.count),
         phase: saved.phase === 'over' ? 'over' : 'ready',
         launchX: Math.max(10, Math.min(W - 10, saved.launchX || W / 2)),
-        bricks: saved.bricks.filter((b: Brick) => b.hp > 0 && b.col >= 0 && b.col < 7 && b.row >= 0 && b.row < 20),
-        pickups: saved.pickups.filter((p: Pickup) => p.col >= 0 && p.col < 7 && p.row >= 0 && p.row < 20),
+        bricks: saved.bricks.filter((b: Brick) => b.hp > 0 && b.col >= 0 && b.col < 7 && b.row >= 0 && b.row < 20).map((b: Brick) => ({ ...b, row: b.row + shift })),
+        pickups: saved.pickups.filter((p: Pickup) => p.col >= 0 && p.col < 7 && p.row >= 0 && p.row < 20).map((p: Pickup) => ({ ...p, row: p.row + shift })),
         id: saved.id || 5, intro: false };
     }
   } catch {}
@@ -102,11 +104,11 @@ function nextRound(g: Game) {
   const used = new Set<number>();
   const target = Math.min(5, 2 + Math.floor(Math.random() * 3) + (g.round > 8 ? 1 : 0));
   while (used.size < target) used.add(Math.floor(Math.random() * 7));
-  for (const col of used) g.bricks.push({ id: g.id++, col, row: 0,
+  for (const col of used) g.bricks.push({ id: g.id++, col, row: 1,
     hp: Math.max(1, Math.round(g.round * (.72 + Math.random() * .72))),
     color: (col + g.round) % PALETTE.length, pulse: 0 });
   const free = [0, 1, 2, 3, 4, 5, 6].filter((c) => !used.has(c));
-  if (free.length) g.pickups.push({ id: g.id++, col: free[Math.floor(Math.random() * free.length)], row: 0 });
+  if (free.length) g.pickups.push({ id: g.id++, col: free[Math.floor(Math.random() * free.length)], row: 1 });
   g.phase = g.bricks.some((b) => rect(b).y + rect(b).h >= floor(g) - 12) ? 'over' : 'ready';
   g.launchX = g.nextX ?? g.launchX;
   g.aimX = Math.min(W, g.launchX + 70); g.aimY = floor(g) - 240;
@@ -164,10 +166,25 @@ function step(g: Game, dt: number, tone: (kind: 'hit' | 'pop' | 'pickup') => voi
   if (g.launched >= g.shotCount && g.balls.length === 0) nextRound(g);
 }
 function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
-  ctx.fillStyle = '#bc9c9c44'; ctx.beginPath(); ctx.arc(x + 1, y + 2, r + 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#d39ea6'; ctx.beginPath(); ctx.arc(x, y, r + 1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fffaf4'; ctx.beginPath(); ctx.arc(x, y - 1, r - .4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#5a4d58'; ctx.beginPath(); ctx.arc(x - 2, y - 1, .8, 0, Math.PI * 2); ctx.arc(x + 2, y - 1, .8, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = '#bc9c9c44'; ctx.beginPath(); ctx.arc(1, 2, r + 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d39ea6';
+  for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * r * .32, -r * .57);
+    ctx.lineTo(side * r * .83, -r * 1.42); ctx.lineTo(side * r * .95, -r * .1); ctx.closePath(); ctx.fill(); }
+  ctx.beginPath(); ctx.arc(0, 0, r + .7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fffaf4'; ctx.beginPath(); ctx.arc(0, -.4, r - .45, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#eab7b7';
+  for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * r * .53, -r * .66);
+    ctx.lineTo(side * r * .79, -r * 1.15); ctx.lineTo(side * r * .78, -r * .28); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = '#5a4d58'; ctx.beginPath(); ctx.arc(-r * .31, -r * .1, .8, 0, Math.PI * 2);
+  ctx.arc(r * .31, -r * .1, .8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d58f9b'; ctx.beginPath(); ctx.moveTo(-1.1, r * .25); ctx.lineTo(1.1, r * .25);
+  ctx.lineTo(0, r * .48); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#866e76'; ctx.lineWidth = .65; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, r * .47); ctx.lineTo(0, r * .63);
+  ctx.moveTo(0, r * .61); ctx.quadraticCurveTo(-1.1, r * .8, -2.1, r * .57);
+  ctx.moveTo(0, r * .61); ctx.quadraticCurveTo(1.1, r * .8, 2.1, r * .57); ctx.stroke();
+  ctx.restore();
 }
 type AimHit = { distance: number; nx: number; ny: number; catchesBall: boolean };
 function firstAimHit(g: Game, x: number, y: number, dx: number, dy: number): AimHit {
@@ -236,6 +253,12 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
     ctx.fillStyle = edge; rounded(ctx, 0, 2, b.w, b.h - 1); ctx.fill();
     ctx.fillStyle = fill; rounded(ctx, 0, 0, b.w, b.h - 3); ctx.fill();
     ctx.fillStyle = '#ffffff66'; rounded(ctx, 7, 6, b.w - 14, 7, 4); ctx.fill();
+    // A stitched paw keeps the numbered cushions cat themed without hiding the HP.
+    ctx.fillStyle = '#765d684f';
+    ctx.beginPath(); ctx.ellipse(11, b.h - 11, 3, 2.2, -.35, 0, Math.PI * 2);
+    ctx.arc(6.5, b.h - 16, 1.1, 0, Math.PI * 2);
+    ctx.arc(10, b.h - 18, 1.1, 0, Math.PI * 2);
+    ctx.arc(13.5, b.h - 16.5, 1.1, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#5a4d58'; ctx.font = `800 ${brick.hp >= 100 ? 19 : brick.hp >= 10 ? 22 : 25}px ui-rounded, 'Trebuchet MS', sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(brick.hp), b.w / 2, b.h / 2 + 1);
     ctx.restore();
@@ -331,6 +354,10 @@ export default function GameScreen() {
         try {
           const last = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null');
           if (last && Number.isInteger(last.round) && Array.isArray(last.bricks) && Array.isArray(last.pickups)) {
+            if (last.bricks.some((b: Brick) => b.row === 0) || last.pickups.some((p: Pickup) => p.row === 0)) {
+              last.bricks = last.bricks.map((b: Brick) => ({ ...b, row: b.row + 1 }));
+              last.pickups = last.pickups.map((p: Pickup) => ({ ...p, row: p.row + 1 }));
+            }
             undoRef.current = last; setCanUndo(true);
           }
         } catch {}
@@ -408,7 +435,7 @@ export default function GameScreen() {
     g.paused = !g.paused; g.aiming = false; sync(); };
   const speed = () => { const g = gameRef.current; if (g) { g.fast = !g.fast; sync(); } };
   const sound = () => { mutedRef.current = !mutedRef.current; setMuted(mutedRef.current); };
-  return <main className="game-screen"><section className="game-shell" aria-label="Little Bounce game">
+  return <main className="game-screen"><section className="game-shell" aria-label="Little Head game">
     <header className="score-hud">
       <Button aria-label={hud.paused ? 'Resume game' : 'Pause game'} className="hud-icon pause-button" variant="ghost" size="icon-lg" onClick={pause} disabled={hud.phase === 'over'}>{hud.paused ? <Play /> : <Pause />}</Button>
       <span className="hud-label">ROUND</span><strong className="round-score">{hud.round}</strong>
@@ -416,13 +443,13 @@ export default function GameScreen() {
       <Button aria-label="Undo last shot" className="undo-button" variant="ghost" size="sm" onClick={undo} disabled={!canUndo}><Undo2 /> Undo</Button>
     </header>
     <div className="game-board">
-      <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} balls. Drag to aim, then press Shoot to launch.`}
+      <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} cat heads. Drag to aim, then press Shoot to launch.`}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { if (gameRef.current) gameRef.current.aiming = false; }} />
       {hud.phase === 'firing' && <Button className="speed-button" variant="secondary" size="sm" onClick={speed}><FastForward /> {hud.fast ? 'Normal' : 'Speed up'}</Button>}
       {(hud.paused || hud.phase === 'over') && <div className="game-overlay" role="dialog" aria-modal="true" aria-label={hud.phase === 'over' ? 'Game over' : 'Paused'}>
         <div className="overlay-card"><span className="overlay-ornament">✦</span>
-          <h2>{hud.phase === 'over' ? 'one more bounce?' : 'taking a breather?'}</h2>
-          <p>{hud.phase === 'over' ? `You reached round ${hud.round}. Nice bouncing!` : 'Your little ball will wait right here.'}</p>
+          <h2>{hud.phase === 'over' ? 'one more pounce?' : 'cat nap?'}</h2>
+          <p>{hud.phase === 'over' ? `You reached round ${hud.round}. Purrfectly played!` : 'Your little cats will wait right here.'}</p>
           <div className="overlay-actions">
             {hud.phase !== 'over' && <Button className="primary-action" onClick={pause}><Play /> Keep playing</Button>}
             <Button className={hud.phase === 'over' ? 'primary-action' : 'secondary-action'} variant={hud.phase === 'over' ? 'default' : 'outline'} onClick={restart}><RotateCcw /> Play again</Button>
@@ -438,8 +465,8 @@ export default function GameScreen() {
     {help && <div className="help-scrim" role="dialog" aria-modal="true" aria-label="How to play"><div className="help-card">
       <Button className="close-help" variant="ghost" size="icon" aria-label="Close help" onClick={() => setHelp(false)}><X /></Button>
       <span className="help-symbol">✳</span><h2>How to play</h2>
-      <p>Drag on the board to aim. Release to set the angle, then press <strong>Shoot</strong> when you’re ready. Each little ball bounces off the walls and soft blocks. A block disappears when its number reaches zero.</p>
-      <p>Catch the green <strong>+1</strong> circles for more balls next turn. After every shot, the blocks move down one row. Keep them above the floor!</p>
+      <p>Drag on the board to aim. Release to set the angle, then press <strong>Shoot</strong> when you’re ready. Each little cat head bounces off the walls and numbered cushions. A cushion disappears when its number reaches zero.</p>
+      <p>Catch the green <strong>+1</strong> circles for more cats next turn. After every shot, the cushions move down one row. Use the open lane at the ceiling for extra ricochets!</p>
       <div className="install-tip"><strong>Keep it on your iPhone</strong><span>In Safari, tap Share, then <b>Add to Home Screen</b>.</span>
         {installPrompt && <Button className="install-action" size="sm" onClick={() => { void installPrompt.prompt(); setInstallPrompt(null); }}>Install app</Button>}
       </div>
