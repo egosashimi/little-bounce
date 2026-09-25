@@ -22,19 +22,19 @@ button { cursor: pointer; }
   padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
 }
 .score-hud {
-  height: clamp(100px, 15dvh, 142px); flex: none; display: flex; align-items: center;
+  height: clamp(88px, 12dvh, 116px); flex: none; display: flex; align-items: center;
   flex-direction: column; justify-content: center; position: relative;
 }
 .hud-label { font-size: 10px; letter-spacing: .25em; color: #b59391; font-weight: 900; }
-.round-score { font-size: clamp(58px, 9.3dvh, 84px); line-height: .95; font-weight: 900; letter-spacing: -.07em; color: #6d5b64; }
-.best-score { position: absolute; top: 24px; right: 24px; font-size: 11px; font-weight: 900; letter-spacing: .07em; color: #a68e92; }
-.undo-button { position: absolute; right: 18px; bottom: 15px; height: 30px; padding: 0 8px; border-radius: 10px; color: #947982; font-weight: 850; font-size: 12px; }
+.round-score { font-size: clamp(54px, 8dvh, 74px); line-height: .95; font-weight: 900; letter-spacing: -.07em; color: #6d5b64; }
+.best-score { position: absolute; top: 17px; right: 24px; font-size: 11px; font-weight: 900; letter-spacing: .07em; color: #a68e92; }
+.undo-button { position: absolute; right: 18px; bottom: 8px; height: 30px; padding: 0 8px; border-radius: 10px; color: #947982; font-weight: 850; font-size: 12px; }
 .undo-button svg { width: 15px; height: 15px; }
 .undo-button:disabled { opacity: .33; cursor: default; }
-.hud-icon { position: absolute; top: 17px; left: 18px; color: #9c7f87; border-radius: 50%; width: 44px; height: 44px; }
+.hud-icon { position: absolute; top: 10px; left: 18px; color: #9c7f87; border-radius: 50%; width: 44px; height: 44px; }
 .hud-icon svg { width: 19px; height: 19px; stroke-width: 2.3; }
 .hud-icon:hover { background: #f2e6de; }
-.hud-icon:focus-visible, .speed-button:focus-visible, .overlay-card button:focus-visible, .help-card button:focus-visible { outline: 3px solid #bd8491; outline-offset: 3px; }
+.hud-icon:focus-visible, .speed-button:focus-visible, .shoot-button:focus-visible, .overlay-card button:focus-visible, .help-card button:focus-visible { outline: 3px solid #bd8491; outline-offset: 3px; }
 .game-board {
   position: relative; flex: 1; min-height: 0; margin: 0 14px;
   border-radius: 26px; overflow: hidden; background: #fffdf7;
@@ -47,13 +47,11 @@ button { cursor: pointer; }
   box-shadow: 0 3px 12px #a1827e29; font-weight: 800; padding: 0 12px; height: 34px;
 }
 .speed-button svg { width: 16px; height: 16px; }
-.game-bottom {
-  height: clamp(84px, 11dvh, 112px); flex: none; text-align: center;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.game-bottom h1 { margin: 0; font-size: clamp(22px, 5vw, 27px); font-weight: 900; letter-spacing: -.065em; line-height: 1; }
-.title-star { display: inline-block; margin-left: 5px; font-size: .58em; color: #dba2a6; vertical-align: top; transform: rotate(15deg); }
-.game-bottom p { margin: 7px 0 0; font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: .01em; }
+.game-controls { height: clamp(64px, 8dvh, 78px); flex: none; display: grid; place-items: center; padding: 7px 18px 4px; }
+.shoot-button { width: min(196px, 58vw); height: 48px; border-radius: 99px; color: #fffaf4; background: #b9818f; box-shadow: inset 0 -3px 0 #935f6b; font-size: 15px; font-weight: 900; letter-spacing: .025em; }
+.shoot-button:hover { background: #aa7080; }
+.shoot-button:disabled { opacity: .45; box-shadow: none; cursor: default; }
+.shoot-button svg { width: 18px; height: 18px; stroke-width: 2.5; }
 .game-overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: #fff8efbd; backdrop-filter: blur(8px); padding: 20px; }
 .overlay-card {
   width: min(100%, 340px); padding: 26px 22px 20px; text-align: center;
@@ -81,5 +79,5 @@ button { cursor: pointer; }
 .install-tip { display: grid; gap: 5px; background: #f4e8df; border-radius: 15px; padding: 13px 14px; margin: 16px 0; color: #6f5964; }
 .install-tip strong { font-size: 13px; }.install-tip span { font-size: 12px; line-height: 1.45; }.install-action { justify-self: start; margin-top: 6px; }
 @media (max-width: 480px) { .game-shell { box-shadow: none; } .game-board { margin-inline: 10px; } }
-@media (max-height: 670px) { .score-hud { height: 93px; } .game-bottom { height: 72px; } .round-score { font-size: 55px; } .best-score { top: 18px; } .hud-icon { top: 12px; } }
+@media (max-height: 670px) { .score-hud { height: 80px; } .game-controls { height: 58px; padding-block: 4px; } .shoot-button { height: 44px; } .round-score { font-size: 50px; } .best-score { top: 13px; } .hud-icon { top: 7px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
