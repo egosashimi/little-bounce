@@ -1,6 +1,6 @@
 # Little Bounce
 
-A cozy, touch-first bouncing-block game for iPhone and desktop browsers. Drag to aim, release to launch, collect green `+1` orbs, and keep the blocks above the floor. The **Undo** button restores the board from before the last shot.
+A cozy, touch-first bouncing-block game for iPhone and desktop browsers. Drag to aim, press **Shoot** to launch, collect green `+1` orbs, and keep the blocks above the floor. The **Undo** button restores the board from before the last shot.
 
 ## Play on iPhone
 
