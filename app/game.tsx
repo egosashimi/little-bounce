@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { FastForward, HelpCircle, Pause, Play, RotateCcw, Undo2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowUp, FastForward, HelpCircle, Pause, Play, RotateCcw, Undo2, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const W = 420, CELL = 60, R = 6.5, SPEED = 620;
@@ -83,9 +83,9 @@ function launchOne(g: Game) {
     lastHit: -1, hitWait: 0, trail: [] }); g.launched++;
 }
 function aimDirection(g: Game, targetX = g.aimX, targetY = g.aimY): { x: number; y: number } {
-  const x = targetX - g.launchX, y = Math.min(-65, targetY - floor(g));
+  const x = targetX - g.launchX, y = Math.min(-8, targetY - floor(g));
   const length = Math.hypot(x, y) || 1;
-  const dx = Math.max(-.94, Math.min(.94, x / length));
+  const dx = Math.max(-.997, Math.min(.997, x / length));
   return { x: dx, y: -Math.sqrt(1 - dx * dx) };
 }
 function fire(g: Game) {
@@ -108,7 +108,9 @@ function nextRound(g: Game) {
   const free = [0, 1, 2, 3, 4, 5, 6].filter((c) => !used.has(c));
   if (free.length) g.pickups.push({ id: g.id++, col: free[Math.floor(Math.random() * free.length)], row: 0 });
   g.phase = g.bricks.some((b) => rect(b).y + rect(b).h >= floor(g) - 12) ? 'over' : 'ready';
-  g.launchX = g.nextX ?? g.launchX; g.balls = []; g.fast = false; save(g);
+  g.launchX = g.nextX ?? g.launchX;
+  g.aimX = Math.min(W, g.launchX + 70); g.aimY = floor(g) - 240;
+  g.balls = []; g.fast = false; save(g);
 }
 function step(g: Game, dt: number, tone: (kind: 'hit' | 'pop' | 'pickup') => void) {
   if (g.paused || g.phase === 'over') return;
@@ -250,7 +252,7 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
   ctx.strokeStyle = '#e9d9d0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(17, floor(g) + 1); ctx.lineTo(W - 17, floor(g) + 1); ctx.stroke();
   if (g.phase === 'ready' && !g.paused) {
     const ox = g.launchX, oy = floor(g) - R - 1;
-    const { x: dx, y: dy } = g.aiming ? aimDirection(g) : aimDirection(g, ox + 70, oy - 240);
+    const { x: dx, y: dy } = aimDirection(g);
     const first = firstAimHit(g, ox, oy, dx, dy);
     const primaryLength = Math.min(first.distance, g.h + W);
     drawAimDots(ctx, ox, oy, dx, dy, Math.max(0, primaryLength - 4), 13,
@@ -377,7 +379,8 @@ export default function GameScreen() {
   const move = (e: PointerEvent<HTMLCanvasElement>) => { const g = gameRef.current; if (!g?.aiming) return;
     const p = point(e); g.aimX = p.x; g.aimY = p.y; };
   const up = (e: PointerEvent<HTMLCanvasElement>) => { const g = gameRef.current; if (!g?.aiming) return;
-    const p = point(e); g.aimX = p.x; g.aimY = p.y;
+    const p = point(e); g.aimX = p.x; g.aimY = p.y; g.aiming = false; };
+  const shoot = () => { const g = gameRef.current; if (!g || g.phase !== 'ready' || g.paused) return;
     undoRef.current = snapshot(g); setCanUndo(true);
     try { localStorage.setItem(UNDO_KEY, JSON.stringify(undoRef.current)); } catch {}
     if (!mutedRef.current) {
@@ -413,7 +416,7 @@ export default function GameScreen() {
       <Button aria-label="Undo last shot" className="undo-button" variant="ghost" size="sm" onClick={undo} disabled={!canUndo}><Undo2 /> Undo</Button>
     </header>
     <div className="game-board">
-      <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} balls. Drag to aim and release to launch.`}
+      <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} balls. Drag to aim, then press Shoot to launch.`}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { if (gameRef.current) gameRef.current.aiming = false; }} />
       {hud.phase === 'firing' && <Button className="speed-button" variant="secondary" size="sm" onClick={speed}><FastForward /> {hud.fast ? 'Normal' : 'Speed up'}</Button>}
       {(hud.paused || hud.phase === 'over') && <div className="game-overlay" role="dialog" aria-modal="true" aria-label={hud.phase === 'over' ? 'Game over' : 'Paused'}>
@@ -431,13 +434,11 @@ export default function GameScreen() {
         </div>
       </div>}
     </div>
-    <footer className="game-bottom"><h1>little bounce<span className="title-star">✳</span></h1>
-      <p>{hud.phase === 'firing' ? 'Watch them bounce!' : hud.intro ? 'Drag to aim · Let go to bounce' : 'Find a clever angle and keep bouncing'}</p>
-    </footer>
+    <div className="game-controls"><Button className="shoot-button" onClick={shoot} disabled={hud.phase !== 'ready' || hud.paused}><ArrowUp /> Shoot</Button></div>
     {help && <div className="help-scrim" role="dialog" aria-modal="true" aria-label="How to play"><div className="help-card">
       <Button className="close-help" variant="ghost" size="icon" aria-label="Close help" onClick={() => setHelp(false)}><X /></Button>
       <span className="help-symbol">✳</span><h2>How to play</h2>
-      <p>Drag on the board to aim, then let go. Each little ball bounces off the walls and soft blocks. A block disappears when its number reaches zero.</p>
+      <p>Drag on the board to aim. Release to set the angle, then press <strong>Shoot</strong> when you’re ready. Each little ball bounces off the walls and soft blocks. A block disappears when its number reaches zero.</p>
       <p>Catch the green <strong>+1</strong> circles for more balls next turn. After every shot, the blocks move down one row. Keep them above the floor!</p>
       <div className="install-tip"><strong>Keep it on your iPhone</strong><span>In Safari, tap Share, then <b>Add to Home Screen</b>.</span>
         {installPrompt && <Button className="install-action" size="sm" onClick={() => { void installPrompt.prompt(); setInstallPrompt(null); }}>Install app</Button>}
