@@ -9,7 +9,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-body { font-family: ui-rounded, 'Avenir Next', 'Trebuchet MS', sans-serif; color: var(--ink); background: #ead8c9; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; font-family: ui-rounded, 'Avenir Next', 'Trebuchet MS', sans-serif; color: var(--ink); background: #ead8c9; }
 button { cursor: pointer; }
 .game-screen {
   width: 100vw; min-height: 100dvh; display: grid; place-items: center;

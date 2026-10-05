@@ -419,6 +419,7 @@ export default function GameScreen() {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+  const aimTrail = useRef<{ x: number; y: number; t: number }[]>([]);
   const point = (e: PointerEvent<HTMLCanvasElement>) => {
     const box = e.currentTarget.getBoundingClientRect();
     return { x: Math.max(0, Math.min(W, (e.clientX - box.left) * W / box.width)),
@@ -428,11 +429,19 @@ export default function GameScreen() {
     const g = gameRef.current; if (!g || g.phase !== 'ready' || g.paused) return;
     e.currentTarget.setPointerCapture(e.pointerId); const p = point(e);
     g.aiming = true; g.aimX = p.x; g.aimY = p.y;
+    aimTrail.current = [{ x: p.x, y: p.y, t: performance.now() }];
   };
   const move = (e: PointerEvent<HTMLCanvasElement>) => { const g = gameRef.current; if (!g?.aiming) return;
-    const p = point(e); g.aimX = p.x; g.aimY = p.y; };
+    const p = point(e); g.aimX = p.x; g.aimY = p.y;
+    const now = performance.now();
+    aimTrail.current = [...aimTrail.current.filter(s => now - s.t < 400), { x: p.x, y: p.y, t: now }];
+  };
+  // Lifting a finger nudges it; settle on where it was just before the lift, ignoring the lift position itself.
   const up = (e: PointerEvent<HTMLCanvasElement>) => { const g = gameRef.current; if (!g?.aiming) return;
-    const p = point(e); g.aimX = p.x; g.aimY = p.y; g.aiming = false; };
+    const cutoff = performance.now() - 90;
+    const settled = [...aimTrail.current].reverse().find(s => s.t <= cutoff) ?? aimTrail.current[0];
+    if (settled) { g.aimX = settled.x; g.aimY = settled.y; }
+    g.aiming = false; };
   const shoot = () => { const g = gameRef.current; if (!g || g.phase !== 'ready' || g.paused) return;
     undoRef.current = snapshot(g); setCanUndo(true);
     try { localStorage.setItem(UNDO_KEY, JSON.stringify(undoRef.current)); } catch {}
