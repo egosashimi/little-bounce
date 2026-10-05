@@ -79,6 +79,12 @@ button { cursor: pointer; }
 .help-card p { color: #786973; font-size: 13px; line-height: 1.55; margin: 12px 0; }
 .install-tip { display: grid; gap: 5px; background: #f4e8df; border-radius: 15px; padding: 13px 14px; margin: 16px 0; color: #6f5964; }
 .install-tip strong { font-size: 13px; }.install-tip span { font-size: 12px; line-height: 1.45; }.install-action { justify-self: start; margin-top: 6px; }
+/* Danger: a cushion will hit the floor after the next shot unless it is cleared. */
+:root .game-board.danger { border-color: #e0485a; animation: danger-flash 1s ease-in-out infinite; }
+@keyframes danger-flash {
+  0%, 100% { border-color: #e0485a; box-shadow: inset 0 0 0 2px #e0485a, inset 0 0 22px #e0485a40, 0 0 16px #e0485a8c; }
+  50% { border-color: #e0485a40; box-shadow: inset 0 0 0 2px transparent, inset 0 0 22px transparent, 0 0 0 transparent; }
+}
 /* Dark mode: a cozy late-night palette. Toggled from the HUD and stored per device. */
 :root[data-theme='dark'] { color-scheme: dark; --ink: #eadbe2; --muted: #b39fab; --paper: #221c26; --accent: #c98a9a; }
 :root[data-theme='dark'] body { background: #141016; }
@@ -107,4 +113,5 @@ button { cursor: pointer; }
 :root[data-theme='dark'] .overlay-card button:focus-visible, :root[data-theme='dark'] .help-card button:focus-visible { outline-color: #d79aaa; }
 @media (max-width: 480px) { .game-shell { box-shadow: none; } .game-board { margin-inline: 10px; } }
 @media (max-height: 670px) { .score-hud { height: 80px; } .game-controls { height: 58px; padding-block: 4px; } .shoot-button { height: 44px; } .round-score { font-size: 50px; } .best-score { top: 13px; } .hud-icon { top: 7px; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  :root .game-board.danger { animation: none; box-shadow: inset 0 0 0 2px #e0485a; } }

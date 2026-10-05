@@ -42,6 +42,8 @@ type Game = {
 const floor = (g: Game) => g.h - 33;
 const rect = (b: Brick) => ({ x: b.col * CELL + 4, y: 13 + b.row * CELL + 4, w: CELL - 8, h: CELL - 8 });
 const center = (p: Pickup) => ({ x: p.col * CELL + 30, y: 43 + p.row * CELL });
+// True when a surviving cushion would reach the floor after the next row shift, ending the game.
+const danger = (g: Game) => g.phase !== 'over' && g.bricks.some((b) => b.hp > 0 && rect(b).y + rect(b).h + CELL >= floor(g) - 12);
 
 function initial(h: number, best: number): Game {
   return { h, best, round: 1, count: 1, launchX: W / 2, id: 5,
@@ -335,13 +337,13 @@ export default function GameScreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null), gameRef = useRef<Game | null>(null);
   const audioRef = useRef<AudioContext | null>(null), lastSound = useRef(0), mutedRef = useRef(false);
   const undoRef = useRef<Snapshot | null>(null);
-  const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, fast: false });
+  const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, fast: false, danger: false });
   const [canUndo, setCanUndo] = useState(false);
   const [muted, setMuted] = useState(false), [help, setHelp] = useState(false);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
   const sync = () => { const g = gameRef.current; if (g) setHud({ round: g.round, best: g.best, count: g.count,
-    phase: g.phase, paused: g.paused, intro: g.intro, fast: g.fast }); };
+    phase: g.phase, paused: g.paused, intro: g.intro, fast: g.fast, danger: danger(g) }); };
   const tone = (kind: 'hit' | 'pop' | 'pickup') => {
     if (mutedRef.current || (kind === 'hit' && performance.now() - lastSound.current < 35)) return;
     lastSound.current = performance.now();
@@ -386,11 +388,11 @@ export default function GameScreen() {
     const tick = (now: number) => {
       const g = gameRef.current;
       if (g) {
-        const before = `${g.round}:${g.count}:${g.phase}:${g.intro}`;
+        const before = `${g.round}:${g.count}:${g.phase}:${g.intro}:${danger(g)}`;
         accumulator += Math.min(.034, (now - previous) / 1000) * (g.fast ? 2.8 : 1);
         let n = 0; while (accumulator >= 1 / 120 && n < 14) { step(g, 1 / 120, tone); accumulator -= 1 / 120; n++; }
         if (n === 14) accumulator = 0;
-        if (before !== `${g.round}:${g.count}:${g.phase}:${g.intro}`) sync();
+        if (before !== `${g.round}:${g.count}:${g.phase}:${g.intro}:${danger(g)}`) sync();
         draw(g, ctx, now);
       }
       previous = now; frameId = requestAnimationFrame(tick);
@@ -469,7 +471,7 @@ export default function GameScreen() {
       <span className="best-score">BEST {hud.best}</span>
       <Button aria-label="Undo last shot" className="undo-button" variant="ghost" size="sm" onClick={undo} disabled={!canUndo}><Undo2 /> Undo</Button>
     </header>
-    <div className="game-board">
+    <div className={`game-board${hud.danger ? ' danger' : ''}`}>
       <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} cat heads. Drag to aim, then press Shoot to launch.`}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { if (gameRef.current) gameRef.current.aiming = false; }} />
       {hud.phase === 'firing' && <Button className="speed-button" variant="secondary" size="sm" onClick={speed}><FastForward /> {hud.fast ? 'Normal' : 'Speed up'}</Button>}
