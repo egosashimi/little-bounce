@@ -1,11 +1,28 @@
 'use client';
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowUp, FastForward, HelpCircle, Pause, Play, RotateCcw, Undo2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowUp, FastForward, HelpCircle, Moon, Pause, Play, RotateCcw, Sun, Undo2, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const W = 420, CELL = 60, R = 6.5, SPEED = 620;
 const SAVE_KEY = 'little-bounce-v1', BEST_KEY = 'little-bounce-best-v1', UNDO_KEY = 'little-bounce-undo-v1';
+const THEME_KEY = 'little-bounce-theme-v1';
+type Theme = 'light' | 'dark';
+// Canvas colors that change with the theme. Cushions, orbs and cat faces keep their pastels in both.
+const INKS = {
+  light: { grid: '#f3e8e0', shadow: '#a584841c', floor: '#e9d9d0', aim: '#bc9faa', bounce: '#a9a2c0',
+    trail: '214,171,173', next: '#d8b7b9', label: '#967e86', paper: '#fff8ee' },
+  dark: { grid: '#3a3040', shadow: '#0000004d', floor: '#4a3e4c', aim: '#c99aac', bounce: '#a59ccb',
+    trail: '214,160,170', next: '#a77f8c', label: '#bba3b0', paper: '#221c26' },
+};
+let ink = INKS.light;
+function initialTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {}
+  return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 const PALETTE = [
   ['#f4bba9', '#d99685'], ['#d9c8eb', '#b6a0d1'], ['#bfe1cd', '#8fc4a5'],
   ['#f6e3a9', '#dcc37a'], ['#c8d9e9', '#a3bdd6'],
@@ -241,7 +258,7 @@ function drawAimDots(ctx: CanvasRenderingContext2D, x: number, y: number, dx: nu
 }
 function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
   ctx.clearRect(0, 0, W, g.h);
-  ctx.fillStyle = '#f3e8e0';
+  ctx.fillStyle = ink.grid;
   for (let x = 30; x < W; x += 60) for (let y = 44; y < floor(g) - 25; y += 60) {
     ctx.beginPath(); ctx.arc(x, y, 1.1, 0, Math.PI * 2); ctx.fill();
   }
@@ -249,7 +266,7 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
     const b = rect(brick), [fill, edge] = PALETTE[brick.color];
     ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
     ctx.scale(1 + brick.pulse * .06, 1 + brick.pulse * .06); ctx.translate(-b.w / 2, -b.h / 2);
-    ctx.fillStyle = '#a584841c'; rounded(ctx, 1, 5, b.w, b.h); ctx.fill();
+    ctx.fillStyle = ink.shadow; rounded(ctx, 1, 5, b.w, b.h); ctx.fill();
     ctx.fillStyle = edge; rounded(ctx, 0, 2, b.w, b.h - 1); ctx.fill();
     ctx.fillStyle = fill; rounded(ctx, 0, 0, b.w, b.h - 3); ctx.fill();
     ctx.fillStyle = '#ffffff66'; rounded(ctx, 7, 6, b.w - 14, 7, 4); ctx.fill();
@@ -272,14 +289,14 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
     ctx.fillStyle = '#46765a'; ctx.font = "800 15px ui-rounded, 'Trebuchet MS', sans-serif";
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('+1', 0, 1); ctx.restore();
   }
-  ctx.strokeStyle = '#e9d9d0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(17, floor(g) + 1); ctx.lineTo(W - 17, floor(g) + 1); ctx.stroke();
+  ctx.strokeStyle = ink.floor; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(17, floor(g) + 1); ctx.lineTo(W - 17, floor(g) + 1); ctx.stroke();
   if (g.phase === 'ready' && !g.paused) {
     const ox = g.launchX, oy = floor(g) - R - 1;
     const { x: dx, y: dy } = aimDirection(g);
     const first = firstAimHit(g, ox, oy, dx, dy);
     const primaryLength = Math.min(first.distance, g.h + W);
     drawAimDots(ctx, ox, oy, dx, dy, Math.max(0, primaryLength - 4), 13,
-      '#bc9faa', .82, .52, 2.8);
+      ink.aim, .82, .52, 2.8);
     if (Number.isFinite(first.distance) && !first.catchesBall) {
       const bx = ox + dx * first.distance, by = oy + dy * first.distance;
       const dot = dx * first.nx + dy * first.ny;
@@ -287,28 +304,28 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
       const second = firstAimHit(g, bx + reflectedX * .1, by + reflectedY * .1, reflectedX, reflectedY);
       const bounceLength = second.distance + .1;
       if (Number.isFinite(bounceLength) && bounceLength > 0) {
-        ctx.strokeStyle = '#a9a2c0'; ctx.lineWidth = 1.5; ctx.globalAlpha = .8;
+        ctx.strokeStyle = ink.bounce; ctx.lineWidth = 1.5; ctx.globalAlpha = .8;
         ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
         drawAimDots(ctx, bx, by, reflectedX, reflectedY, Math.max(0, bounceLength - 4), 12,
-          '#a9a2c0', .68, .34, 2.35);
-        ctx.fillStyle = '#a9a2c0'; ctx.globalAlpha = .65;
+          ink.bounce, .68, .34, 2.35);
+        ctx.fillStyle = ink.bounce; ctx.globalAlpha = .65;
         ctx.beginPath(); ctx.arc(bx + reflectedX * bounceLength, by + reflectedY * bounceLength,
           2.35, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       }
     }
   }
   for (const ball of g.balls) {
-    ball.trail.forEach((p, i) => { ctx.fillStyle = `rgba(214,171,173,${.08 + i * .06})`;
+    ball.trail.forEach((p, i) => { ctx.fillStyle = `rgba(${ink.trail},${.08 + i * .06})`;
       ctx.beginPath(); ctx.arc(p.x, p.y, 2 + i * .5, 0, Math.PI * 2); ctx.fill(); });
     drawBall(ctx, ball.x, ball.y, R);
   }
   if (g.phase === 'ready') drawBall(ctx, g.launchX, floor(g) - R - 1, R + 1);
   if (g.phase === 'firing' && g.nextX !== null) {
-    ctx.fillStyle = '#d8b7b9'; ctx.beginPath(); ctx.arc(g.nextX, floor(g) - 5, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ink.next; ctx.beginPath(); ctx.arc(g.nextX, floor(g) - 5, 4, 0, Math.PI * 2); ctx.fill();
   }
   for (const p of g.particles) { ctx.globalAlpha = Math.max(0, p.life * 2); ctx.fillStyle = p.color;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill(); }
-  ctx.globalAlpha = 1; ctx.fillStyle = '#967e86'; ctx.font = "800 16px ui-rounded, 'Trebuchet MS', sans-serif";
+  ctx.globalAlpha = 1; ctx.fillStyle = ink.label; ctx.font = "800 16px ui-rounded, 'Trebuchet MS', sans-serif";
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const labelX = g.phase === 'firing' && g.nextX !== null ? g.nextX : g.launchX;
   ctx.fillText(`× ${g.count}`, Math.max(32, Math.min(W - 32, labelX)), floor(g) + 22);
@@ -321,6 +338,7 @@ export default function GameScreen() {
   const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, fast: false });
   const [canUndo, setCanUndo] = useState(false);
   const [muted, setMuted] = useState(false), [help, setHelp] = useState(false);
+  const [theme, setTheme] = useState<Theme>(initialTheme);
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
   const sync = () => { const g = gameRef.current; if (g) setHud({ round: g.round, best: g.best, count: g.count,
     phase: g.phase, paused: g.paused, intro: g.intro, fast: g.fast }); };
@@ -385,6 +403,12 @@ export default function GameScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
+    ink = INKS[theme];
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', ink.paper);
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  }, [theme]);
+  useEffect(() => {
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const base = import.meta.env.BASE_URL || '/';
       void navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch(() => {});
@@ -435,9 +459,12 @@ export default function GameScreen() {
     g.paused = !g.paused; g.aiming = false; sync(); };
   const speed = () => { const g = gameRef.current; if (g) { g.fast = !g.fast; sync(); } };
   const sound = () => { mutedRef.current = !mutedRef.current; setMuted(mutedRef.current); };
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  const themeLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
   return <main className="game-screen"><section className="game-shell" aria-label="Little Head game">
     <header className="score-hud">
       <Button aria-label={hud.paused ? 'Resume game' : 'Pause game'} className="hud-icon pause-button" variant="ghost" size="icon-lg" onClick={pause} disabled={hud.phase === 'over'}>{hud.paused ? <Play /> : <Pause />}</Button>
+      <Button aria-label={themeLabel} title={themeLabel} className="hud-icon theme-button" variant="ghost" size="icon-lg" onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
       <span className="hud-label">ROUND</span><strong className="round-score">{hud.round}</strong>
       <span className="best-score">BEST {hud.best}</span>
       <Button aria-label="Undo last shot" className="undo-button" variant="ghost" size="sm" onClick={undo} disabled={!canUndo}><Undo2 /> Undo</Button>
@@ -456,6 +483,7 @@ export default function GameScreen() {
           </div>
           <div className="menu-tools">
             <Button variant="ghost" size="sm" onClick={sound}>{muted ? <VolumeX /> : <Volume2 />} {muted ? 'Sound off' : 'Sound on'}</Button>
+            <Button variant="ghost" size="sm" onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />} {theme === 'dark' ? 'Light mode' : 'Dark mode'}</Button>
             <Button variant="ghost" size="sm" onClick={() => setHelp(true)}><HelpCircle /> How to play</Button>
           </div>
         </div>

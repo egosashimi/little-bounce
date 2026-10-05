@@ -34,6 +34,7 @@ button { cursor: pointer; }
 .hud-icon { position: absolute; top: 10px; left: 18px; color: #9c7f87; border-radius: 50%; width: 44px; height: 44px; }
 .hud-icon svg { width: 19px; height: 19px; stroke-width: 2.3; }
 .hud-icon:hover { background: #f2e6de; }
+.theme-button { left: 62px; }
 .hud-icon:focus-visible, .speed-button:focus-visible, .shoot-button:focus-visible, .overlay-card button:focus-visible, .help-card button:focus-visible { outline: 3px solid #bd8491; outline-offset: 3px; }
 .game-board {
   position: relative; flex: 1; min-height: 0; margin: 0 14px;
@@ -66,7 +67,7 @@ button { cursor: pointer; }
 .primary-action { color: #fffaf4; background: #b9818f; box-shadow: inset 0 -3px 0 #935f6b; }
 .primary-action:hover { background: #aa7080; }
 .secondary-action { background: #fffaf4; color: #876e78; border-color: #dbc3c1; }
-.menu-tools { display: flex; gap: 6px; justify-content: center; margin-top: 14px; border-top: 1px solid #eedfd8; padding-top: 10px; }
+.menu-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; border-top: 1px solid #eedfd8; padding-top: 10px; }
 .menu-tools button { color: #8e7780; font-size: 11px; font-weight: 750; }
 .menu-tools svg { width: 14px; height: 14px; }
 .help-scrim { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: #67545f80; backdrop-filter: blur(7px); }
@@ -78,6 +79,32 @@ button { cursor: pointer; }
 .help-card p { color: #786973; font-size: 13px; line-height: 1.55; margin: 12px 0; }
 .install-tip { display: grid; gap: 5px; background: #f4e8df; border-radius: 15px; padding: 13px 14px; margin: 16px 0; color: #6f5964; }
 .install-tip strong { font-size: 13px; }.install-tip span { font-size: 12px; line-height: 1.45; }.install-action { justify-self: start; margin-top: 6px; }
+/* Dark mode: a cozy late-night palette. Toggled from the HUD and stored per device. */
+:root[data-theme='dark'] { color-scheme: dark; --ink: #eadbe2; --muted: #b39fab; --paper: #221c26; --accent: #c98a9a; }
+:root[data-theme='dark'] body { background: #141016; }
+:root[data-theme='dark'] .game-screen { background: radial-gradient(circle at 50% 14%, #2c2430 0, #1b161e 62%, #141016 100%); }
+:root[data-theme='dark'] .game-shell { box-shadow: 0 20px 80px #00000080; }
+:root[data-theme='dark'] .hud-label { color: #9f8794; }
+:root[data-theme='dark'] .round-score { color: #f0e2e8; }
+:root[data-theme='dark'] .best-score { color: #a891a0; }
+:root[data-theme='dark'] .undo-button, :root[data-theme='dark'] .hud-icon { color: #c4aab8; }
+:root[data-theme='dark'] .hud-icon:hover, :root[data-theme='dark'] .undo-button:hover { background: #352b39; }
+:root[data-theme='dark'] .game-board { background: #2a2230; border-color: #3d3242; box-shadow: inset 0 5px 18px #1610194d; }
+:root[data-theme='dark'] .speed-button { color: #ead8e1; background: #3a2f3feb; border-color: #4d3f52; box-shadow: 0 3px 12px #0000004d; }
+:root[data-theme='dark'] .shoot-button, :root[data-theme='dark'] .primary-action { color: #fff7f2; background: #a86f80; box-shadow: inset 0 -3px 0 #7c4c5a; }
+:root[data-theme='dark'] .shoot-button:hover, :root[data-theme='dark'] .primary-action:hover { background: #b97d8e; }
+:root[data-theme='dark'] .game-overlay { background: #1b161ebd; }
+:root[data-theme='dark'] .overlay-card, :root[data-theme='dark'] .help-card { background: #2c2431; border-color: #43374a; box-shadow: 0 12px 32px #00000066, inset 0 3px 0 #3a3040; }
+:root[data-theme='dark'] .overlay-card p { color: #bba6b2; }
+:root[data-theme='dark'] .secondary-action { background: #2c2431; color: #dcc6d1; border-color: #54455a; }
+:root[data-theme='dark'] .secondary-action:hover { background: #352b39; }
+:root[data-theme='dark'] .menu-tools { border-top-color: #43374a; }
+:root[data-theme='dark'] .menu-tools button, :root[data-theme='dark'] .close-help { color: #c4aab8; }
+:root[data-theme='dark'] .help-scrim { background: #0b080c99; }
+:root[data-theme='dark'] .help-card p { color: #cbb8c2; }
+:root[data-theme='dark'] .install-tip { background: #382e3d; color: #e2d0d9; }
+:root[data-theme='dark'] .hud-icon:focus-visible, :root[data-theme='dark'] .speed-button:focus-visible, :root[data-theme='dark'] .shoot-button:focus-visible,
+:root[data-theme='dark'] .overlay-card button:focus-visible, :root[data-theme='dark'] .help-card button:focus-visible { outline-color: #d79aaa; }
 @media (max-width: 480px) { .game-shell { box-shadow: none; } .game-board { margin-inline: 10px; } }
 @media (max-height: 670px) { .score-hud { height: 80px; } .game-controls { height: 58px; padding-block: 4px; } .shoot-button { height: 44px; } .round-score { font-size: 50px; } .best-score { top: 13px; } .hud-icon { top: 7px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
