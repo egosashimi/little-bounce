@@ -44,6 +44,14 @@ const rect = (b: Brick) => ({ x: b.col * CELL + 4, y: 13 + b.row * CELL + 4, w: 
 const center = (p: Pickup) => ({ x: p.col * CELL + 30, y: 43 + p.row * CELL });
 // True when a surviving cushion would reach the floor after the next row shift, ending the game.
 const danger = (g: Game) => g.phase !== 'over' && g.bricks.some((b) => b.hp > 0 && rect(b).y + rect(b).h + CELL >= floor(g) - 12);
+// Cushion numbers map onto a C major pentatonic scale falling from C6, so a 1 rings highest and
+// overlapping hits always harmonize. Numbers past 10 are compressed, bottoming out at A2.
+const PENTATONIC = [0, 3, 5, 8, 10];
+function noteHz(n: number) {
+  const step = Math.min(16, n <= 10 ? n - 1 : 9 + Math.round(4 * Math.log2(n / 10)));
+  return 1046.5 * 2 ** (-(PENTATONIC[step % 5] + 12 * Math.floor(step / 5)) / 12);
+}
+type Tone = (kind: 'hit' | 'pop' | 'pickup', n?: number) => void;
 
 function initial(h: number, best: number): Game {
   return { h, best, round: 1, count: 1, launchX: W / 2, id: 5,
@@ -133,7 +141,7 @@ function nextRound(g: Game) {
   g.aimX = Math.min(W, g.launchX + 70); g.aimY = floor(g) - 240;
   g.balls = []; g.fast = false; save(g);
 }
-function step(g: Game, dt: number, tone: (kind: 'hit' | 'pop' | 'pickup') => void) {
+function step(g: Game, dt: number, tone: Tone) {
   if (g.paused || g.phase === 'over') return;
   for (const b of g.bricks) b.pulse = Math.max(0, b.pulse - dt * 3.5);
   for (const p of g.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 120 * dt; p.life -= dt; }
@@ -172,10 +180,9 @@ function step(g: Game, dt: number, tone: (kind: 'hit' | 'pop' | 'pickup') => voi
       ball.x += nx * (R - dist + 1); ball.y += ny * (R - dist + 1);
       const dot = ball.vx * nx + ball.vy * ny;
       if (dot < 0) { ball.vx -= 2 * dot * nx; ball.vy -= 2 * dot * ny; }
+      tone(brick.hp <= 1 ? 'pop' : 'hit', brick.hp);
       brick.hp--; brick.pulse = 1; ball.lastHit = brick.id; ball.hitWait = .06;
-      if (brick.hp <= 0) {
-        burst(g, b.x + b.w / 2, b.y + b.h / 2, PALETTE[brick.color][1], 8); tone('pop');
-      } else tone('hit');
+      if (brick.hp <= 0) burst(g, b.x + b.w / 2, b.y + b.h / 2, PALETTE[brick.color][1], 8);
       break;
     }
   }
@@ -335,7 +342,7 @@ function draw(g: Game, ctx: CanvasRenderingContext2D, now: number) {
 
 export default function GameScreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null), gameRef = useRef<Game | null>(null);
-  const audioRef = useRef<AudioContext | null>(null), lastSound = useRef(0), mutedRef = useRef(false);
+  const audioRef = useRef<AudioContext | null>(null), lastSound = useRef(new Map<number, number>()), voices = useRef(0), mutedRef = useRef(false);
   const undoRef = useRef<Snapshot | null>(null);
   const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, fast: false, danger: false });
   const [canUndo, setCanUndo] = useState(false);
@@ -344,21 +351,26 @@ export default function GameScreen() {
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
   const sync = () => { const g = gameRef.current; if (g) setHud({ round: g.round, best: g.best, count: g.count,
     phase: g.phase, paused: g.paused, intro: g.intro, fast: g.fast, danger: danger(g) }); };
-  const tone = (kind: 'hit' | 'pop' | 'pickup') => {
-    if (mutedRef.current || (kind === 'hit' && performance.now() - lastSound.current < 35)) return;
-    lastSound.current = performance.now();
+  // Each note has its own short cooldown so different numbers can chime together as chords,
+  // while the voice cap keeps a full volley from turning into noise.
+  const tone: Tone = (kind, n = 1) => {
+    if (mutedRef.current || voices.current >= 10) return;
+    const hz = kind === 'pickup' ? 700 : noteHz(n), now = performance.now();
+    if (now - (lastSound.current.get(hz) ?? 0) < 45) return;
+    lastSound.current.set(hz, now);
     try {
       audioRef.current ??= new AudioContext(); const audio = audioRef.current;
       if (audio.state === 'suspended') void audio.resume();
-      const osc = audio.createOscillator(), gain = audio.createGain();
-      const hz = kind === 'pickup' ? 700 : kind === 'pop' ? 430 : 300;
+      const osc = audio.createOscillator(), gain = audio.createGain(), t = audio.currentTime;
+      const length = kind === 'pop' ? .32 : .2;
       osc.type = kind === 'pickup' ? 'sine' : 'triangle';
-      osc.frequency.setValueAtTime(hz, audio.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(hz * (kind === 'pickup' ? 1.5 : .75), audio.currentTime + .09);
-      gain.gain.setValueAtTime(.0001, audio.currentTime);
-      gain.gain.exponentialRampToValueAtTime(kind === 'hit' ? .018 : .04, audio.currentTime + .008);
-      gain.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + .13);
-      osc.connect(gain); gain.connect(audio.destination); osc.start(); osc.stop(audio.currentTime + .14);
+      osc.frequency.setValueAtTime(hz, t);
+      if (kind === 'pickup') osc.frequency.exponentialRampToValueAtTime(hz * 1.5, t + .09);
+      gain.gain.setValueAtTime(.0001, t);
+      gain.gain.exponentialRampToValueAtTime(kind === 'hit' ? .03 : .045, t + .006);
+      gain.gain.exponentialRampToValueAtTime(.0001, t + length);
+      osc.connect(gain); gain.connect(audio.destination); osc.start(); osc.stop(t + length + .01);
+      voices.current++; osc.onended = () => { voices.current--; };
     } catch {}
   };
   useEffect(() => {
