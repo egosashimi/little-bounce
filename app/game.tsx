@@ -45,10 +45,12 @@ const center = (p: Pickup) => ({ x: p.col * CELL + 30, y: 43 + p.row * CELL });
 // True when a surviving cushion would reach the floor after the next row shift, ending the game.
 const danger = (g: Game) => g.phase !== 'over' && g.bricks.some((b) => b.hp > 0 && rect(b).y + rect(b).h + CELL >= floor(g) - 12);
 // Cushion numbers map onto a C major pentatonic scale falling from C6, so a 1 rings highest and
-// overlapping hits always harmonize. Numbers past 10 are compressed, bottoming out at A2.
+// overlapping hits always harmonize. The scale repeats every 100: 1-10 each get a note, 11-100
+// are compressed down to A2, and 101 starts over at the top.
 const PENTATONIC = [0, 3, 5, 8, 10];
-function noteHz(n: number) {
-  const step = Math.min(16, n <= 10 ? n - 1 : 9 + Math.round(4 * Math.log2(n / 10)));
+function noteHz(hp: number) {
+  const n = (hp - 1) % 100 + 1;
+  const step = n <= 10 ? n - 1 : 9 + Math.round(7 * Math.log10(n / 10));
   return 1046.5 * 2 ** (-(PENTATONIC[step % 5] + 12 * Math.floor(step / 5)) / 12);
 }
 type Tone = (kind: 'hit' | 'pop' | 'pickup', n?: number) => void;
