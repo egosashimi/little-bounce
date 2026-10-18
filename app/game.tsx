@@ -5,6 +5,8 @@ import { ArrowUp, FastForward, HelpCircle, Moon, Pause, Play, RotateCcw, Sun, Un
 import { Button } from '@/components/ui/button';
 
 const W = 420, CELL = 60, R = 6.5, SPEED = 620;
+// Fast-forward gears the speed button cycles through while balls are flying.
+const SPEEDS = [1, 3, 6, 12];
 const SAVE_KEY = 'little-bounce-v1', BEST_KEY = 'little-bounce-best-v1', UNDO_KEY = 'little-bounce-undo-v1';
 const THEME_KEY = 'little-bounce-theme-v1';
 type Theme = 'light' | 'dark';
@@ -37,7 +39,7 @@ type Game = {
   h: number; round: number; best: number; count: number; launchX: number; id: number;
   bricks: Brick[]; pickups: Pickup[]; balls: Ball[]; particles: Particle[];
   phase: Phase; paused: boolean; aiming: boolean; aimX: number; aimY: number; intro: boolean;
-  launched: number; shotCount: number; clock: number; dx: number; dy: number; nextX: number | null; fast: boolean;
+  launched: number; shotCount: number; clock: number; dx: number; dy: number; nextX: number | null; speed: number;
 };
 const floor = (g: Game) => g.h - 33;
 const rect = (b: Brick) => ({ x: b.col * CELL + 4, y: 13 + b.row * CELL + 4, w: CELL - 8, h: CELL - 8 });
@@ -62,7 +64,7 @@ function initial(h: number, best: number): Game {
       { id: 3, col: 5, row: 1, hp: 1, color: 2, pulse: 0 }],
     pickups: [{ id: 4, col: 4, row: 1 }], balls: [], particles: [],
     phase: 'ready', paused: false, aiming: false, aimX: W / 2 + 70, aimY: h / 2,
-    intro: true, launched: 0, shotCount: 1, clock: 0, dx: 0, dy: -1, nextX: null, fast: false };
+    intro: true, launched: 0, shotCount: 1, clock: 0, dx: 0, dy: -1, nextX: null, speed: 0 };
 }
 function load(h: number): Game {
   let best = 0;
@@ -123,7 +125,7 @@ function fire(g: Game) {
   if (g.phase !== 'ready' || g.paused) return;
   const direction = aimDirection(g);
   g.dx = direction.x; g.dy = direction.y;
-  g.phase = 'firing'; g.intro = false; g.aiming = false; g.fast = false;
+  g.phase = 'firing'; g.intro = false; g.aiming = false; g.speed = 0;
   g.launched = 0; g.shotCount = g.count; g.clock = 0; g.nextX = null; launchOne(g);
 }
 function nextRound(g: Game) {
@@ -141,7 +143,7 @@ function nextRound(g: Game) {
   g.phase = g.bricks.some((b) => rect(b).y + rect(b).h >= floor(g) - 12) ? 'over' : 'ready';
   g.launchX = g.nextX ?? g.launchX;
   g.aimX = Math.min(W, g.launchX + 70); g.aimY = floor(g) - 240;
-  g.balls = []; g.fast = false; save(g);
+  g.balls = []; g.speed = 0; save(g);
 }
 function step(g: Game, dt: number, tone: Tone) {
   if (g.paused || g.phase === 'over') return;
@@ -346,13 +348,13 @@ export default function GameScreen() {
   const canvasRef = useRef<HTMLCanvasElement>(null), gameRef = useRef<Game | null>(null);
   const audioRef = useRef<AudioContext | null>(null), lastSound = useRef(new Map<number, number>()), voices = useRef(0), mutedRef = useRef(false);
   const undoRef = useRef<Snapshot | null>(null);
-  const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, fast: false, danger: false });
+  const [hud, setHud] = useState({ round: 1, best: 0, count: 1, phase: 'ready' as Phase, paused: false, intro: true, speed: 0, danger: false });
   const [canUndo, setCanUndo] = useState(false);
   const [muted, setMuted] = useState(false), [help, setHelp] = useState(false);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
   const sync = () => { const g = gameRef.current; if (g) setHud({ round: g.round, best: g.best, count: g.count,
-    phase: g.phase, paused: g.paused, intro: g.intro, fast: g.fast, danger: danger(g) }); };
+    phase: g.phase, paused: g.paused, intro: g.intro, speed: g.speed, danger: danger(g) }); };
   // Each note has its own short cooldown so different numbers can chime together as chords,
   // while the voice cap keeps a full volley from turning into noise.
   const tone: Tone = (kind, n = 1) => {
@@ -403,9 +405,9 @@ export default function GameScreen() {
       const g = gameRef.current;
       if (g) {
         const before = `${g.round}:${g.count}:${g.phase}:${g.intro}:${danger(g)}`;
-        accumulator += Math.min(.034, (now - previous) / 1000) * (g.fast ? 2.8 : 1);
-        let n = 0; while (accumulator >= 1 / 120 && n < 14) { step(g, 1 / 120, tone); accumulator -= 1 / 120; n++; }
-        if (n === 14) accumulator = 0;
+        accumulator += Math.min(.034, (now - previous) / 1000) * SPEEDS[g.speed];
+        let n = 0; while (accumulator >= 1 / 120 && n < 56) { step(g, 1 / 120, tone); accumulator -= 1 / 120; n++; }
+        if (n === 56) accumulator = 0;
         if (before !== `${g.round}:${g.count}:${g.phase}:${g.intro}:${danger(g)}`) sync();
         draw(g, ctx, now);
       }
@@ -482,7 +484,7 @@ export default function GameScreen() {
     save(fresh); sync(); setHelp(false); };
   const pause = () => { const g = gameRef.current; if (!g || g.phase === 'over') return;
     g.paused = !g.paused; g.aiming = false; sync(); };
-  const speed = () => { const g = gameRef.current; if (g) { g.fast = !g.fast; sync(); } };
+  const speedUp = () => { const g = gameRef.current; if (g) { g.speed = (g.speed + 1) % SPEEDS.length; sync(); } };
   const sound = () => { mutedRef.current = !mutedRef.current; setMuted(mutedRef.current); };
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   const themeLabel = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
@@ -497,7 +499,9 @@ export default function GameScreen() {
     <div className={`game-board${hud.danger ? ' danger' : ''}`}>
       <canvas ref={canvasRef} className="play-canvas" aria-label={`Round ${hud.round}, ${hud.count} cat heads. Drag to aim, then press Shoot to launch.`}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { if (gameRef.current) gameRef.current.aiming = false; }} />
-      {hud.phase === 'firing' && <Button className="speed-button" variant="secondary" size="sm" onClick={speed}><FastForward /> {hud.fast ? 'Normal' : 'Speed up'}</Button>}
+      {hud.phase === 'firing' && <Button className="speed-button" variant="secondary" size="sm" onClick={speedUp}
+        aria-label={hud.speed === SPEEDS.length - 1 ? 'Back to normal speed' : `Speed up to ${SPEEDS[hud.speed + 1]}×`}>
+        <FastForward /> {hud.speed ? `× ${SPEEDS[hud.speed]}` : 'Speed up'}</Button>}
       {(hud.paused || hud.phase === 'over') && <div className="game-overlay" role="dialog" aria-modal="true" aria-label={hud.phase === 'over' ? 'Game over' : 'Paused'}>
         <div className="overlay-card"><span className="overlay-ornament">✦</span>
           <h2>{hud.phase === 'over' ? 'one more pounce?' : 'cat nap?'}</h2>
